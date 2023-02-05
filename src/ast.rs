@@ -1,3 +1,5 @@
+pub type Program = Vec<Statement>;
+
 pub enum Statement {
     Expression(Expression),
 }
