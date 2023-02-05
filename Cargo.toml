@@ -1,0 +1,8 @@
+[package]
+name = "nolana"
+version = "1.0.0"
+edition = "2021"
+authors = ["Arexon"]
+description = "Speedy Molang parser and interpreter library."
+
+[dependencies]
