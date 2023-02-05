@@ -1,5 +1,5 @@
 pub enum Statement {
-    Expr(Expression),
+    Expression(Expression),
 }
 
 pub enum Expression {
