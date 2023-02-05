@@ -110,6 +110,8 @@ pub enum Token<'a> {
     #[token("return")]
     Return,
 
+    Eof,
+
     #[regex("#[^\n]*", logos::skip)]
     #[regex("[ \t\n\r]+", logos::skip)]
     #[error]
