@@ -80,7 +80,7 @@ impl<'a> Parser<'a> {
                 _ => return Err(ParseError::UnexpectedToken),
             };
 
-            if let Some((lbp, rbp)) = op.infix_binding_power() {
+            if let Some((lbp, rbp)) = op.binary_binding_power() {
                 if lbp < min_bp {
                     break;
                 }
@@ -135,7 +135,8 @@ pub enum ParseError {
 }
 
 impl<'a> Token<'a> {
-    pub fn infix_binding_power(&self) -> Option<(u8, u8)> {
+    /// Returns the binding power which represents the precedence of this token.
+    pub fn binary_binding_power(&self) -> Option<(u8, u8)> {
         Some(match self {
             Self::Plus | Self::Minus => (1, 2),
             Self::Star | Self::Slash => (3, 4),
@@ -151,15 +152,7 @@ mod tests {
     use super::*;
 
     macro_rules! text_parser {
-        ($name:ident, $source:literal, $expected_output:expr) => {
-            #[test]
-            fn $name() {
-                let mut parser = Parser::new($source.as_bytes());
-                let actual_output = parser.parse_program();
-                assert_eq!(actual_output, $expected_output);
-            }
-        };
-        ($name:ident, $( $source:literal, $expected_output:expr ), +) => {
+        ($name:ident, $( ( $source:literal, $expected_output:expr ) ), +) => {
             #[test]
             fn $name() {
                 $(
@@ -173,33 +166,39 @@ mod tests {
 
     text_parser!(
         binary_expressions,
-        "1 + 2",
-        Ok(Program(vec![Statement::Expression(Expression::Binary(
-            Expression::Number(1.0).into(),
-            Operator::Add,
-            Expression::Number(2.0).into()
-        ))])),
-        "1 + 2 * 3",
-        Ok(Program(vec![Statement::Expression(Expression::Binary(
-            Expression::Number(1.0).into(),
-            Operator::Add,
-            Expression::Binary(
-                Expression::Number(2.0).into(),
-                Operator::Mul,
-                Expression::Number(3.0).into()
-            )
-            .into(),
-        ))])),
-        "(1 + 2) * 3",
-        Ok(Program(vec![Statement::Expression(Expression::Binary(
-            Expression::Binary(
+        (
+            "1 + 2",
+            Ok(Program(vec![Statement::Expression(Expression::Binary(
                 Expression::Number(1.0).into(),
                 Operator::Add,
                 Expression::Number(2.0).into()
-            )
-            .into(),
-            Operator::Mul,
-            Expression::Number(3.0).into(),
-        ))]))
+            ))]))
+        ),
+        (
+            "1 + 2 * 3",
+            Ok(Program(vec![Statement::Expression(Expression::Binary(
+                Expression::Number(1.0).into(),
+                Operator::Add,
+                Expression::Binary(
+                    Expression::Number(2.0).into(),
+                    Operator::Mul,
+                    Expression::Number(3.0).into()
+                )
+                .into()
+            ))]))
+        ),
+        (
+            "(1 + 2) * 3",
+            Ok(Program(vec![Statement::Expression(Expression::Binary(
+                Expression::Binary(
+                    Expression::Number(1.0).into(),
+                    Operator::Add,
+                    Expression::Number(2.0).into()
+                )
+                .into(),
+                Operator::Mul,
+                Expression::Number(3.0).into()
+            ))]))
+        )
     );
 }

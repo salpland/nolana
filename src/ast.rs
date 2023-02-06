@@ -10,9 +10,9 @@ pub enum Statement {
 
 #[derive(Debug, PartialEq)]
 pub enum Expression {
+    Number(f64),
     Binary(Box<Expression>, Operator, Box<Expression>),
     Unary(Operator, Box<Expression>),
-    Number(f64),
 }
 
 #[derive(Debug, PartialEq)]
