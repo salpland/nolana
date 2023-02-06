@@ -1,6 +1,6 @@
 use logos::Logos;
 
-#[derive(Debug, PartialEq, Logos)]
+#[derive(Debug, PartialEq, Clone, Logos)]
 pub enum Token<'a> {
     #[regex("[a-zA-Z]+[.][a-zA-Z_]+")]
     Identifier(&'a str),
