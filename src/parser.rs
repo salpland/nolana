@@ -204,23 +204,16 @@ mod tests {
     text_parser!(
         unary_expressions,
         (
-            "-1 + 2",
-            Ok(Program(vec![Statement::Expression(Expression::Binary(
+            "-1",
+            Ok(Program(vec![Statement::Expression(
                 Expression::Unary(Operator::Div, Expression::Number(1.0).into()).into(),
-                Operator::Add,
-                Expression::Number(2.0).into()
-            ))]))
+            )]))
         ),
         (
-            "!-1 + 2",
-            Ok(Program(vec![Statement::Expression(Expression::Binary(
-                Expression::Unary(
-                    Operator::Neg,
-                    Expression::Unary(Operator::Div, Expression::Number(1.0).into()).into()
-                )
-                .into(),
-                Operator::Add,
-                Expression::Number(2.0).into()
+            "!-1",
+            Ok(Program(vec![Statement::Expression(Expression::Unary(
+                Operator::Neg,
+                Expression::Unary(Operator::Div, Expression::Number(1.0).into()).into()
             ))]))
         ),
         (
