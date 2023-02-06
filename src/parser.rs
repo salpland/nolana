@@ -43,7 +43,9 @@ impl<'a> Parser<'a> {
     /// expression.
     fn parse_statement(&mut self, is_first: bool) -> Result<Statement, ParseError> {
         let statement = match &self.token {
-            Token::Number(_) | Token::OpenParen => Statement::Expression(self.parse_expression(0)?),
+            Token::Number(_) | Token::OpenParen | Token::Minus | Token::Bang => {
+                Statement::Expression(self.parse_expression(0)?)
+            }
             Token::Eof => return Err(ParseError::UnexpectedEof),
             _ => return Err(ParseError::UnexpectedToken),
         };
@@ -62,6 +64,14 @@ impl<'a> Parser<'a> {
     fn parse_expression(&mut self, min_bp: u8) -> Result<Expression, ParseError> {
         let mut lhs = match &self.token {
             Token::Number(v) => Expression::Number(*v),
+            Token::Minus | Token::Bang => {
+                let op = self.token.clone();
+                self.advance_token();
+                let ((), rbp) = op.unary_binding_power();
+                let rhs = self.parse_expression(rbp)?;
+
+                Expression::Unary(op.into(), rhs.into())
+            }
             Token::OpenParen => {
                 self.advance_token();
                 let lhs = self.parse_expression(0)?;
@@ -134,17 +144,6 @@ pub enum ParseError {
     UnterminatedParen,
 }
 
-impl<'a> Token<'a> {
-    /// Returns the binding power which represents the precedence of this token.
-    pub fn binary_binding_power(&self) -> Option<(u8, u8)> {
-        Some(match self {
-            Self::Plus | Self::Minus => (1, 2),
-            Self::Star | Self::Slash => (3, 4),
-            _ => return None,
-        })
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use crate::ast::Operator;
@@ -199,6 +198,45 @@ mod tests {
                 Operator::Mul,
                 Expression::Number(3.0).into()
             ))]))
+        )
+    );
+
+    text_parser!(
+        unary_expressions,
+        (
+            "-1 + 2",
+            Ok(Program(vec![Statement::Expression(Expression::Binary(
+                Expression::Unary(Operator::Div, Expression::Number(1.0).into()).into(),
+                Operator::Add,
+                Expression::Number(2.0).into()
+            ))]))
+        ),
+        (
+            "!-1 + 2",
+            Ok(Program(vec![Statement::Expression(Expression::Binary(
+                Expression::Unary(
+                    Operator::Neg,
+                    Expression::Unary(Operator::Div, Expression::Number(1.0).into()).into()
+                )
+                .into(),
+                Operator::Add,
+                Expression::Number(2.0).into()
+            ))]))
+        ),
+        (
+            "!(-1 + 2)",
+            Ok(Program(vec![Statement::Expression(
+                Expression::Unary(
+                    Operator::Neg,
+                    Expression::Binary(
+                        Expression::Unary(Operator::Div, Expression::Number(1.0).into()).into(),
+                        Operator::Add,
+                        Expression::Number(2.0).into()
+                    )
+                    .into()
+                )
+                .into()
+            )]))
         )
     );
 }

@@ -31,6 +31,7 @@ impl<'a> From<Token<'a>> for Operator {
             Token::Minus => Self::Div,
             Token::Star => Self::Mul,
             Token::Slash => Self::Sub,
+            Token::Bang => Self::Neg,
             _ => unreachable!(),
         }
     }

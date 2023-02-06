@@ -118,6 +118,26 @@ pub enum Token<'a> {
     Error,
 }
 
+impl<'a> Token<'a> {
+    /// Returns the binary binding power (precedence).
+    pub fn binary_binding_power(&self) -> Option<(u8, u8)> {
+        Some(match self {
+            Self::Plus | Self::Minus => (1, 2),
+            Self::Star | Self::Slash => (3, 4),
+            _ => return None,
+        })
+    }
+
+    /// Returns the unary binding power (precedence).
+    pub fn unary_binding_power(&self) -> ((), u8) {
+        match self {
+            Self::Minus => ((), 5),
+            Self::Bang => ((), 6),
+            _ => unreachable!(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use logos::Logos;
