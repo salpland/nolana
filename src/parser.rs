@@ -6,6 +6,7 @@ use crate::{
     token::Token,
 };
 
+/// A Molang parser.
 pub struct Parser<'a> {
     lexer: Lexer<'a, Token<'a>>,
     token: Token<'a>,
@@ -32,7 +33,7 @@ impl<'a> Parser<'a> {
             statements.push(self.parse_statement(statements.is_empty())?);
         }
 
-        Ok(Program(statements))
+        Ok(statements)
     }
 
     /// Parses a single statement.
@@ -184,41 +185,35 @@ mod tests {
         binary_expressions,
         (
             "1 + 2",
-            Ok(Program(vec![Statement::Expression(
+            Ok(vec![Statement::Expression(Expression::new_binary(
+                Expression::Number(1.0),
+                Operator::Add,
+                Expression::Number(2.0)
+            ))])
+        ),
+        (
+            "1 + 2 * 3",
+            Ok(vec![Statement::Expression(Expression::new_binary(
+                Expression::Number(1.0),
+                Operator::Add,
+                Expression::new_binary(
+                    Expression::Number(2.0),
+                    Operator::Multiply,
+                    Expression::Number(3.0)
+                )
+            ))])
+        ),
+        (
+            "(1 + 2) * 3",
+            Ok(vec![Statement::Expression(Expression::new_binary(
                 Expression::new_binary(
                     Expression::Number(1.0),
                     Operator::Add,
                     Expression::Number(2.0)
-                )
-            )]))
-        ),
-        (
-            "1 + 2 * 3",
-            Ok(Program(vec![Statement::Expression(
-                Expression::new_binary(
-                    Expression::Number(1.0),
-                    Operator::Add,
-                    Expression::new_binary(
-                        Expression::Number(2.0),
-                        Operator::Multiply,
-                        Expression::Number(3.0)
-                    )
-                )
-            )]))
-        ),
-        (
-            "(1 + 2) * 3",
-            Ok(Program(vec![Statement::Expression(
-                Expression::new_binary(
-                    Expression::new_binary(
-                        Expression::Number(1.0),
-                        Operator::Add,
-                        Expression::Number(2.0)
-                    ),
-                    Operator::Multiply,
-                    Expression::Number(3.0)
-                )
-            )]))
+                ),
+                Operator::Multiply,
+                Expression::Number(3.0)
+            ))])
         )
     );
 
@@ -226,28 +221,28 @@ mod tests {
         unary_expressions,
         (
             "-1",
-            Ok(Program(vec![Statement::Expression(Expression::new_unary(
+            Ok(vec![Statement::Expression(Expression::new_unary(
                 Operator::Divide,
                 Expression::Number(1.0)
-            ),)]))
+            ))])
         ),
         (
             "!-1",
-            Ok(Program(vec![Statement::Expression(Expression::new_unary(
+            Ok(vec![Statement::Expression(Expression::new_unary(
                 Operator::Negate,
                 Expression::new_unary(Operator::Divide, Expression::Number(1.0))
-            ))]))
+            ))])
         ),
         (
             "!(-1 + 2)",
-            Ok(Program(vec![Statement::Expression(Expression::new_unary(
+            Ok(vec![Statement::Expression(Expression::new_unary(
                 Operator::Negate,
                 Expression::new_binary(
                     Expression::new_unary(Operator::Divide, Expression::Number(1.0)),
                     Operator::Add,
                     Expression::Number(2.0)
                 )
-            ))]))
+            ))])
         )
     );
 
@@ -255,13 +250,11 @@ mod tests {
         ternary_expressions,
         (
             "0 ? 1 : 2",
-            Ok(Program(vec![Statement::Expression(
-                Expression::new_ternary(
-                    Expression::Number(0.0),
-                    Expression::Number(1.0),
-                    Expression::Number(2.0)
-                )
-            )]))
+            Ok(vec![Statement::Expression(Expression::new_ternary(
+                Expression::Number(0.0),
+                Expression::Number(1.0),
+                Expression::Number(2.0)
+            ))])
         )
     );
 }
