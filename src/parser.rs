@@ -169,92 +169,100 @@ mod tests {
     use super::*;
 
     macro_rules! text_parser {
-        ($name:ident, $( ( $source:literal, $expected_output:expr ) ), +) => {
+        ($name:ident, $source:literal, $expected_output:expr) => {
             #[test]
             fn $name() {
-                $(
-                    let mut parser = Parser::new($source.as_bytes());
-                    let actual_output = parser.parse_program();
-                    assert_eq!(actual_output, $expected_output);
-                ) *
+                let mut parser = Parser::new($source.as_bytes());
+                let actual_output = parser.parse_program();
+                assert_eq!(actual_output, $expected_output);
             }
         };
     }
 
     text_parser!(
-        binary_expressions,
-        (
-            "1 + 2",
-            Ok(vec![Statement::Expression(Expression::new_binary(
-                Expression::Number(1.0),
-                Operator::Add,
-                Expression::Number(2.0)
-            ))])
-        ),
-        (
-            "1 + 2 * 3",
-            Ok(vec![Statement::Expression(Expression::new_binary(
-                Expression::Number(1.0),
-                Operator::Add,
-                Expression::new_binary(
-                    Expression::Number(2.0),
-                    Operator::Multiply,
-                    Expression::Number(3.0)
-                )
-            ))])
-        ),
-        (
-            "(1 + 2) * 3",
-            Ok(vec![Statement::Expression(Expression::new_binary(
-                Expression::new_binary(
-                    Expression::Number(1.0),
-                    Operator::Add,
-                    Expression::Number(2.0)
-                ),
+        binary_addition_expression,
+        "1 + 2",
+        Ok(vec![Statement::Expression(Expression::new_binary(
+            Expression::Number(1.0),
+            Operator::Add,
+            Expression::Number(2.0)
+        ))])
+    );
+
+    text_parser!(
+        binary_subtraction_expression,
+        "1 - 2",
+        Ok(vec![Statement::Expression(Expression::new_binary(
+            Expression::Number(1.0),
+            Operator::Subtract,
+            Expression::Number(2.0)
+        ))])
+    );
+
+    text_parser!(
+        binary_multiplication_expression,
+        "1 * 2",
+        Ok(vec![Statement::Expression(Expression::new_binary(
+            Expression::Number(1.0),
+            Operator::Multiply,
+            Expression::Number(2.0)
+        ))])
+    );
+
+    text_parser!(
+        binary_division_expression,
+        "1 / 2",
+        Ok(vec![Statement::Expression(Expression::new_binary(
+            Expression::Number(1.0),
+            Operator::Divide,
+            Expression::Number(2.0)
+        ))])
+    );
+
+    text_parser!(
+        order_of_operations,
+        "1 + 2 * 3",
+        Ok(vec![Statement::Expression(Expression::new_binary(
+            Expression::Number(1.0),
+            Operator::Add,
+            Expression::new_binary(
+                Expression::Number(2.0),
                 Operator::Multiply,
                 Expression::Number(3.0)
-            ))])
-        )
+            )
+        ))])
     );
 
     text_parser!(
-        unary_expressions,
-        (
-            "-1",
-            Ok(vec![Statement::Expression(Expression::new_unary(
-                Operator::Divide,
-                Expression::Number(1.0)
-            ))])
-        ),
-        (
-            "!-1",
-            Ok(vec![Statement::Expression(Expression::new_unary(
-                Operator::Negate,
-                Expression::new_unary(Operator::Divide, Expression::Number(1.0))
-            ))])
-        ),
-        (
-            "!(-1 + 2)",
-            Ok(vec![Statement::Expression(Expression::new_unary(
-                Operator::Negate,
-                Expression::new_binary(
-                    Expression::new_unary(Operator::Divide, Expression::Number(1.0)),
-                    Operator::Add,
-                    Expression::Number(2.0)
-                )
-            ))])
-        )
-    );
-
-    text_parser!(
-        ternary_expressions,
-        (
-            "0 ? 1 : 2",
-            Ok(vec![Statement::Expression(Expression::new_ternary(
-                Expression::Number(0.0),
+        forced_order_of_operations,
+        "(1 + 2) * 3",
+        Ok(vec![Statement::Expression(Expression::new_binary(
+            Expression::new_binary(
                 Expression::Number(1.0),
+                Operator::Add,
                 Expression::Number(2.0)
-            ))])
-        )
+            ),
+            Operator::Multiply,
+            Expression::Number(3.0)
+        ))])
+    );
+
+    text_parser!(
+        unary_expression,
+        "!-1",
+        Ok(vec![Statement::Expression(Expression::new_unary(
+            Operator::Negate,
+            Expression::new_unary(Operator::Divide, Expression::Number(1.0))
+        ))])
+    );
+
+    text_parser!(
+        ternary_expression,
+        "0 ? 1 : 2",
+        Ok(vec![Statement::Expression(Expression::new_ternary(
+            Expression::Number(0.0),
+            Expression::Number(1.0),
+            Expression::Number(2.0)
+        ))])
     );
 }
