@@ -252,7 +252,7 @@ mod tests {
         "!-1",
         Ok(vec![Statement::Expression(Expression::new_unary(
             Operator::Negate,
-            Expression::new_unary(Operator::Divide, Expression::Number(1.0))
+            Expression::new_unary(Operator::Subtract, Expression::Number(1.0))
         ))])
     );
 

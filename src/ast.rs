@@ -136,9 +136,9 @@ impl<'a> From<Token<'a>> for Operator {
     fn from(token: Token<'a>) -> Self {
         match token {
             Token::Plus => Self::Add,
-            Token::Minus => Self::Divide,
+            Token::Minus => Self::Subtract,
             Token::Star => Self::Multiply,
-            Token::Slash => Self::Subtract,
+            Token::Slash => Self::Divide,
             Token::Bang => Self::Negate,
             _ => unreachable!(),
         }
