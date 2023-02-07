@@ -1,7 +1,7 @@
 use crate::token::Token;
 
 /// A program containing a list of statements.
-pub type Program = Vec<Statement>;
+pub type Program<'a> = Vec<Statement<'a>>;
 
 /// A statement parse node.
 ///
@@ -16,14 +16,14 @@ pub type Program = Vec<Statement>;
 /// Otherwise, the program is considered a "simple expression", meaning the
 /// value of the statement expression is directly returned.
 #[derive(Debug, PartialEq)]
-pub enum Statement {
+pub enum Statement<'a> {
     /// See [`Expression`].
-    Expression(Expression),
+    Expression(Expression<'a>),
 }
 
 /// An expression parse node.
 #[derive(Debug, PartialEq)]
-pub enum Expression {
+pub enum Expression<'a> {
     /// A floating-point number.
     Number(f64),
 
@@ -34,9 +34,9 @@ pub enum Expression {
     ///
     /// Syntax: `x [Operator] y`.
     Binary {
-        lhs: Box<Expression>,
+        lhs: Box<Expression<'a>>,
         op: Operator,
-        rhs: Box<Expression>,
+        rhs: Box<Expression<'a>>,
     },
 
     /// A unary expression node.
@@ -44,7 +44,10 @@ pub enum Expression {
     /// This expression is an operation with only one operand.
     ///
     /// Syntax: `[Operator]x`.
-    Unary { op: Operator, rhs: Box<Expression> },
+    Unary {
+        op: Operator,
+        rhs: Box<Expression<'a>>,
+    },
 
     /// A ternary expression node.
     ///
@@ -53,20 +56,28 @@ pub enum Expression {
     ///
     /// Syntax: `x ? y : z`.
     Ternary {
-        condition: Box<Expression>,
-        if_true: Box<Expression>,
-        if_false: Box<Expression>,
+        condition: Box<Expression<'a>>,
+        if_true: Box<Expression<'a>>,
+        if_false: Box<Expression<'a>>,
+    },
+
+    /// A function call.
+    ///
+    /// Syntax: `foo.bar([Expression], [Expression])`.
+    Call {
+        id: &'a str,
+        arguments: Vec<Expression<'a>>,
     },
 }
 
-impl Expression {
+impl<'a> Expression<'a> {
     /// Creates a number expression.
     pub fn new_number(value: f64) -> Self {
         Self::Number(value)
     }
 
     /// Creates a binary expression.
-    pub fn new_binary(lhs: Expression, op: Operator, rhs: Expression) -> Self {
+    pub fn new_binary(lhs: Expression<'a>, op: Operator, rhs: Expression<'a>) -> Self {
         Self::Binary {
             lhs: Box::new(lhs),
             op,
@@ -75,7 +86,7 @@ impl Expression {
     }
 
     /// Creates a unary expression.
-    pub fn new_unary(op: Operator, rhs: Expression) -> Self {
+    pub fn new_unary(op: Operator, rhs: Expression<'a>) -> Self {
         Self::Unary {
             op,
             rhs: Box::new(rhs),
@@ -83,12 +94,21 @@ impl Expression {
     }
 
     /// Creates a ternary expression.
-    pub fn new_ternary(condition: Expression, if_true: Expression, if_false: Expression) -> Self {
+    pub fn new_ternary(
+        condition: Expression<'a>,
+        if_true: Expression<'a>,
+        if_false: Expression<'a>,
+    ) -> Self {
         Self::Ternary {
             condition: Box::new(condition),
             if_true: Box::new(if_true),
             if_false: Box::new(if_false),
         }
+    }
+
+    /// Creates a function call expression.
+    pub fn new_call(id: &'a str, arguments: Vec<Expression<'a>>) -> Self {
+        Self::Call { id, arguments }
     }
 }
 

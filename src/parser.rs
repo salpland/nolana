@@ -25,7 +25,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a program which consists of one or more statements.
-    pub fn parse_program(&mut self) -> Result<Program, ParseError> {
+    pub fn parse_program(&mut self) -> Result<Program<'a>, ParseError> {
         self.advance_token();
 
         let mut statements = Vec::new();
@@ -42,11 +42,13 @@ impl<'a> Parser<'a> {
     /// whether the program is a simple or complex Molang expression. An error
     /// will be returned if a statement is not terminated in a complex
     /// expression.
-    fn parse_statement(&mut self, is_first: bool) -> Result<Statement, ParseError> {
+    fn parse_statement(&mut self, is_first: bool) -> Result<Statement<'a>, ParseError> {
         let statement = match &self.token {
-            Token::Number(_) | Token::OpenParen | Token::Minus | Token::Bang => {
-                Statement::Expression(self.parse_expression(0)?)
-            }
+            Token::Number(_)
+            | Token::OpenParen
+            | Token::Minus
+            | Token::Bang
+            | Token::Identifier(_) => Statement::Expression(self.parse_expression(0)?),
             Token::Eof => return Err(ParseError::UnexpectedEof),
             _ => return Err(ParseError::UnexpectedToken),
         };
@@ -62,7 +64,7 @@ impl<'a> Parser<'a> {
     /// Parses a single expression.
     ///
     /// This uses Pratt parsing as it is more efficient for expressions.
-    fn parse_expression(&mut self, min_bp: u8) -> Result<Expression, ParseError> {
+    fn parse_expression(&mut self, min_bp: u8) -> Result<Expression<'a>, ParseError> {
         let mut lhs = match &self.token {
             Token::Number(v) => Expression::Number(*v),
             Token::Minus | Token::Bang => {
@@ -80,6 +82,26 @@ impl<'a> Parser<'a> {
                 self.expect_token(Token::CloseParen)?;
                 lhs
             }
+            Token::Identifier(id) => {
+                let id = *id;
+                let mut arguments = Vec::new();
+
+                self.expect_token(Token::OpenParen)?;
+
+                loop {
+                    self.advance_token();
+                    arguments.push(self.parse_expression(0)?);
+                    self.advance_token();
+
+                    match &self.token {
+                        Token::Comma => continue,
+                        Token::CloseParen => break,
+                        _ => return Err(ParseError::UnexpectedToken),
+                    }
+                }
+
+                Expression::new_call(id, arguments)
+            }
             _ => return Err(ParseError::UnexpectedToken),
         };
 
@@ -87,7 +109,7 @@ impl<'a> Parser<'a> {
             // We peek instead of consuming the next token to ensure cases where there is no
             // operator do not lead to a shift in the token stream.
             let op = match self.lexer.clone().next().unwrap_or(Token::Eof) {
-                Token::Eof | Token::CloseParen | Token::Colon => break,
+                Token::Eof | Token::CloseParen | Token::Colon | Token::Comma => break,
                 t if matches!(
                     t,
                     Token::Plus | Token::Minus | Token::Star | Token::Slash | Token::Question
@@ -180,7 +202,7 @@ mod tests {
     }
 
     text_parser!(
-        binary_addition_expression,
+        binary_addition,
         "1 + 2",
         Ok(vec![Statement::Expression(Expression::new_binary(
             Expression::Number(1.0),
@@ -190,7 +212,7 @@ mod tests {
     );
 
     text_parser!(
-        binary_subtraction_expression,
+        binary_subtraction,
         "1 - 2",
         Ok(vec![Statement::Expression(Expression::new_binary(
             Expression::Number(1.0),
@@ -200,7 +222,7 @@ mod tests {
     );
 
     text_parser!(
-        binary_multiplication_expression,
+        binary_multiplication,
         "1 * 2",
         Ok(vec![Statement::Expression(Expression::new_binary(
             Expression::Number(1.0),
@@ -210,7 +232,7 @@ mod tests {
     );
 
     text_parser!(
-        binary_division_expression,
+        binary_division,
         "1 / 2",
         Ok(vec![Statement::Expression(Expression::new_binary(
             Expression::Number(1.0),
@@ -248,7 +270,7 @@ mod tests {
     );
 
     text_parser!(
-        unary_expression,
+        unary,
         "!-1",
         Ok(vec![Statement::Expression(Expression::new_unary(
             Operator::Negate,
@@ -257,12 +279,21 @@ mod tests {
     );
 
     text_parser!(
-        ternary_expression,
+        ternary,
         "0 ? 1 : 2",
         Ok(vec![Statement::Expression(Expression::new_ternary(
             Expression::Number(0.0),
             Expression::Number(1.0),
             Expression::Number(2.0)
+        ))])
+    );
+
+    text_parser!(
+        function_call,
+        "foo.bar(1, 2)",
+        Ok(vec![Statement::Expression(Expression::new_call(
+            "foo.bar",
+            vec![Expression::Number(1.0), Expression::Number(2.0)]
         ))])
     );
 }
