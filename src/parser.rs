@@ -9,7 +9,8 @@ use crate::{
 /// A Molang parser.
 pub struct Parser<'a> {
     lexer: Lexer<'a, Token<'a>>,
-    token: Token<'a>,
+    current_token: Token<'a>,
+    next_token: Token<'a>,
 }
 
 impl<'a> Parser<'a> {
@@ -20,16 +21,18 @@ impl<'a> Parser<'a> {
                 // SAFETY: the caller of the function must ensure the source is valid UTF-8.
                 unsafe { std::str::from_utf8_unchecked(source) },
             ),
-            token: Token::Eof,
+            current_token: Token::Eof,
+            next_token: Token::Eof,
         }
     }
 
     /// Parses a program which consists of one or more statements.
     pub fn parse_program(&mut self) -> Result<Program<'a>, ParseError> {
-        self.advance_token();
+        self.first_advance();
+        self.advance();
 
         let mut statements = Vec::new();
-        while self.token != Token::Eof {
+        while self.current_token != Token::Eof {
             statements.push(self.parse_statement(statements.is_empty())?);
         }
 
@@ -43,18 +46,17 @@ impl<'a> Parser<'a> {
     /// will be returned if a statement is not terminated in a complex
     /// expression.
     fn parse_statement(&mut self, is_first: bool) -> Result<Statement<'a>, ParseError> {
-        let statement = match &self.token {
-            Token::Number(_)
-            | Token::OpenParen
-            | Token::Minus
-            | Token::Bang
-            | Token::Identifier(_) => Statement::Expression(self.parse_expression(0)?),
-            Token::Eof => return Err(ParseError::UnexpectedEof),
+        let statement = match (&self.current_token, &self.next_token) {
+            (Token::Number(_) | Token::OpenParen | Token::Minus | Token::Bang, _)
+            | (Token::Identifier(_), Token::OpenParen) => {
+                Statement::Expression(self.parse_expression(0)?)
+            }
+            (Token::Eof, _) => return Err(ParseError::UnexpectedEof),
             _ => return Err(ParseError::UnexpectedToken),
         };
 
-        self.advance_token();
-        if self.token != Token::Semi && !is_first {
+        self.advance();
+        if self.current_token != Token::Semi && !is_first {
             return Err(ParseError::UnterminatedStatement);
         }
 
@@ -65,50 +67,16 @@ impl<'a> Parser<'a> {
     ///
     /// This uses Pratt parsing as it is more efficient for expressions.
     fn parse_expression(&mut self, min_bp: u8) -> Result<Expression<'a>, ParseError> {
-        let mut lhs = match &self.token {
+        let mut lhs = match &self.current_token {
             Token::Number(v) => Expression::Number(*v),
-            Token::Minus | Token::Bang => {
-                let op = self.token.clone();
-                self.advance_token();
-                // This will always return a binding power so unwrapping is fine.
-                let (_, rbp) = op.binding_power(true).unwrap();
-                let rhs = self.parse_expression(rbp)?;
-
-                Expression::new_unary(op.into(), rhs)
-            }
-            Token::OpenParen => {
-                self.advance_token();
-                let lhs = self.parse_expression(0)?;
-                self.expect_token(Token::CloseParen)?;
-                lhs
-            }
-            Token::Identifier(id) => {
-                let id = *id;
-                let mut arguments = Vec::new();
-
-                self.expect_token(Token::OpenParen)?;
-
-                loop {
-                    self.advance_token();
-                    arguments.push(self.parse_expression(0)?);
-                    self.advance_token();
-
-                    match &self.token {
-                        Token::Comma => continue,
-                        Token::CloseParen => break,
-                        _ => return Err(ParseError::UnexpectedToken),
-                    }
-                }
-
-                Expression::new_call(id, arguments)
-            }
+            Token::Minus | Token::Bang => self.parse_unary_expression()?,
+            Token::OpenParen => self.parse_expression_in_paren()?,
+            Token::Identifier(id) => self.parse_call_expression(id)?,
             _ => return Err(ParseError::UnexpectedToken),
         };
 
         loop {
-            // We peek instead of consuming the next token to ensure cases where there is no
-            // operator do not lead to a shift in the token stream.
-            let op = match self.lexer.clone().next().unwrap_or(Token::Eof) {
+            let op = match self.next_token.clone() {
                 Token::Eof | Token::CloseParen | Token::Colon | Token::Comma => break,
                 t if matches!(
                     t,
@@ -126,21 +94,14 @@ impl<'a> Parser<'a> {
                 }
 
                 // To previously peeked operator token.
-                self.advance_token();
+                self.advance();
                 // To next expression token.
-                self.advance_token();
+                self.advance();
 
                 lhs = if op == Token::Question {
-                    let mhs = self.parse_expression(0)?;
-                    self.expect_token(Token::Colon)?;
-                    self.advance_token();
-                    let rhs = self.parse_expression(rbp)?;
-
-                    Expression::new_ternary(lhs, mhs, rhs)
+                    self.parse_ternary_expression(rbp, lhs)?
                 } else {
-                    let rhs = self.parse_expression(rbp)?;
-
-                    Expression::new_binary(lhs, op.into(), rhs)
+                    self.parse_binary_expression(rbp, lhs, op)?
                 };
                 continue;
             }
@@ -151,17 +112,90 @@ impl<'a> Parser<'a> {
         Ok(lhs)
     }
 
-    /// Advances the lexer to the next token.
-    fn advance_token(&mut self) {
-        self.token = self.lexer.next().unwrap_or(Token::Eof);
+    /// Parses a binary expression.
+    fn parse_binary_expression(
+        &mut self,
+        rbp: u8,
+        lhs: Expression<'a>,
+        op: Token,
+    ) -> Result<Expression<'a>, ParseError> {
+        let rhs = self.parse_expression(rbp)?;
+
+        Ok(Expression::new_binary(lhs, op.into(), rhs))
+    }
+
+    /// Parses a unary expression.
+    fn parse_unary_expression(&mut self) -> Result<Expression<'a>, ParseError> {
+        let op = self.current_token.clone();
+        self.advance();
+        let (_, rbp) = op.binding_power(true).unwrap();
+        let rhs = self.parse_expression(rbp)?;
+        Ok(Expression::new_unary(op.into(), rhs))
+    }
+
+    /// Parses a ternary expression.
+    fn parse_ternary_expression(
+        &mut self,
+        rbp: u8,
+        lhs: Expression<'a>,
+    ) -> Result<Expression<'a>, ParseError> {
+        let mhs = self.parse_expression(0)?;
+        self.expect(Token::Colon)?;
+        self.advance();
+        let rhs = self.parse_expression(rbp)?;
+
+        Ok(Expression::new_ternary(lhs, mhs, rhs))
+    }
+
+    /// Parses an an expression inside parenthesis.
+    fn parse_expression_in_paren(&mut self) -> Result<Expression<'a>, ParseError> {
+        self.advance();
+        let lhs = self.parse_expression(0)?;
+        self.expect(Token::CloseParen)?;
+        Ok(lhs)
+    }
+
+    /// Parses a function call expression.
+    fn parse_call_expression(&mut self, id: &'a str) -> Result<Expression<'a>, ParseError> {
+        let mut arguments = Vec::new();
+
+        self.expect(Token::OpenParen)?;
+
+        loop {
+            self.advance();
+            arguments.push(self.parse_expression(0)?);
+            self.advance();
+
+            match &self.current_token {
+                Token::Comma => continue,
+                Token::CloseParen => break,
+                _ => return Err(ParseError::UnexpectedToken),
+            }
+        }
+
+        Ok(Expression::new_call(id, arguments))
+    }
+
+    /// Advances the current and next tokens.
+    fn advance(&mut self) {
+        self.current_token = std::mem::replace(
+            &mut self.next_token,
+            self.lexer.next().unwrap_or(Token::Eof),
+        );
+    }
+
+    /// Similar to `self.advance` but used only once at the start to correctly
+    /// offset the token stream.
+    fn first_advance(&mut self) {
+        self.next_token = self.lexer.next().unwrap_or(Token::Eof);
     }
 
     /// Advances the lexer consumnig the next token and checking whether it
     /// matches the given one or not.
-    fn expect_token(&mut self, expected_token: Token) -> Result<(), ParseError> {
-        self.advance_token();
+    fn expect(&mut self, expected_token: Token) -> Result<(), ParseError> {
+        self.advance();
 
-        if self.token == expected_token {
+        if self.current_token == expected_token {
             Ok(())
         } else {
             Err(ParseError::UnterminatedParen)

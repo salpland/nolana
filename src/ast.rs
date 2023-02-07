@@ -61,7 +61,7 @@ pub enum Expression<'a> {
         if_false: Box<Expression<'a>>,
     },
 
-    /// A function call.
+    /// A function call expression node.
     ///
     /// Syntax: `foo.bar([Expression], [Expression])`.
     Call {
