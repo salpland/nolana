@@ -67,7 +67,8 @@ impl<'a> Parser<'a> {
             Token::Minus | Token::Bang => {
                 let op = self.token.clone();
                 self.advance_token();
-                let ((), rbp) = op.unary_binding_power();
+                // This will always return a binding power so unwrapping is fine.
+                let (_, rbp) = op.binding_power(true).unwrap();
                 let rhs = self.parse_expression(rbp)?;
 
                 Expression::Unary(op.into(), rhs.into())
@@ -85,23 +86,43 @@ impl<'a> Parser<'a> {
             // We peek instead of consuming the next token to ensure cases where there is no
             // operator do not lead to a shift in the token stream.
             let op = match self.lexer.clone().next().unwrap_or(Token::Eof) {
-                Token::Eof | Token::CloseParen => break,
-                t if matches!(t, Token::Plus | Token::Minus | Token::Star | Token::Slash) => t,
+                Token::Eof | Token::CloseParen | Token::Colon => break,
+                t if matches!(
+                    t,
+                    Token::Plus | Token::Minus | Token::Star | Token::Slash | Token::Question
+                ) =>
+                {
+                    t
+                }
                 _ => return Err(ParseError::UnexpectedToken),
             };
 
-            if let Some((lbp, rbp)) = op.binary_binding_power() {
+            if let Some((lbp, rbp)) = op.binding_power(false) {
                 if lbp < min_bp {
                     break;
                 }
 
-                // Skip to previously peeked operator.
+                // To previously peeked operator token.
                 self.advance_token();
-                // Skip to next expression.
+                // To next expression token.
                 self.advance_token();
 
-                let rhs = self.parse_expression(rbp)?;
-                lhs = Expression::Binary(lhs.into(), op.into(), rhs.into());
+                lhs = if op == Token::Question {
+                    let mhs = self.parse_expression(0)?;
+                    self.expect_token(Token::Colon)?;
+                    self.advance_token();
+                    let rhs = self.parse_expression(rbp)?;
+
+                    Expression::Ternary {
+                        condition: lhs.into(),
+                        if_true: mhs.into(),
+                        if_false: rhs.into(),
+                    }
+                } else {
+                    let rhs = self.parse_expression(rbp)?;
+
+                    Expression::Binary(lhs.into(), op.into(), rhs.into())
+                };
                 continue;
             }
 
@@ -230,6 +251,18 @@ mod tests {
                 )
                 .into()
             )]))
+        )
+    );
+
+    text_parser!(
+        ternary_expressions,
+        (
+            "0 ? 1 : 2",
+            Ok(Program(vec![Statement::Expression(Expression::Ternary {
+                condition: Expression::Number(0.0).into(),
+                if_true: Expression::Number(1.0).into(),
+                if_false: Expression::Number(2.0).into()
+            })]))
         )
     );
 }

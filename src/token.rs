@@ -119,22 +119,16 @@ pub enum Token<'a> {
 }
 
 impl<'a> Token<'a> {
-    /// Returns the binary binding power (precedence).
-    pub fn binary_binding_power(&self) -> Option<(u8, u8)> {
+    /// Returns the binding power of this token (precedence).
+    pub fn binding_power(&self, is_unary: bool) -> Option<(u8, u8)> {
         Some(match self {
-            Self::Plus | Self::Minus => (1, 2),
-            Self::Star | Self::Slash => (3, 4),
+            Self::Minus if is_unary => (0, 9),
+            Self::Bang if is_unary => (0, 8),
+            Self::Star | Self::Slash => (6, 7),
+            Self::Plus | Self::Minus => (4, 5),
+            Self::Question => (3, 2),
             _ => return None,
         })
-    }
-
-    /// Returns the unary binding power (precedence).
-    pub fn unary_binding_power(&self) -> ((), u8) {
-        match self {
-            Self::Minus => ((), 5),
-            Self::Bang => ((), 6),
-            _ => unreachable!(),
-        }
     }
 }
 

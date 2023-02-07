@@ -13,6 +13,11 @@ pub enum Expression {
     Number(f64),
     Binary(Box<Expression>, Operator, Box<Expression>),
     Unary(Operator, Box<Expression>),
+    Ternary {
+        condition: Box<Expression>,
+        if_true: Box<Expression>,
+        if_false: Box<Expression>,
+    },
 }
 
 #[derive(Debug, PartialEq)]
