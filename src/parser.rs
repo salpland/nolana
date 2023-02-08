@@ -7,13 +7,17 @@ use crate::{
 };
 
 /// A Molang parser.
+///
+/// This parser implementation tries to be conformant to the most recent
+/// Molang implementation. [Legacy behavior](https://bedrock.dev/docs/stable/Molang#Versioned%20Changes)
+/// such as incorrect ternary operator associativity are not supported.
 pub struct Parser<'src> {
     lexer: Lexer<'src, Token<'src>>,
     token: Token<'src>,
 }
 
 impl<'src> Parser<'src> {
-    /// Creates a new Molang parser.
+    /// Creates a new Molang parser with provided source to parse.
     pub fn new(source: &'src str) -> Self {
         Self {
             lexer: Token::lexer(source),

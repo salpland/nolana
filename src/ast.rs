@@ -80,6 +80,9 @@ pub enum Expression<'src> {
 
     /// A conditional expression node.
     ///
+    /// This expression will execute the block on the right if the condition on
+    /// the left evaluates to `true`.
+    ///
     /// Syntax: `q.foo ? { v.x = 2.0; }`.
     Conditional {
         condition: Box<Expression<'src>>,
@@ -87,6 +90,8 @@ pub enum Expression<'src> {
     },
 
     /// A function call expression node.
+    ///
+    /// This expression will call a built-in function with the given arguments.
     ///
     /// Syntax: `q.bar(1, 2)`.
     Call {
