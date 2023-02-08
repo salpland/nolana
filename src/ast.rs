@@ -1,7 +1,13 @@
+//! Molang abstract syntax tree.
+//!
+//! Since there is no official Molang grammar specification, this implementation
+//! is an attempt to make a Molang AST based on publicly available information
+//! such as the [Molang documentation](https://bedrock.dev/docs/stable/Molang).
+
 use crate::token::Token;
 
 /// A program containing a list of statements.
-pub type Program<'a> = Vec<Statement<'a>>;
+pub type Program<'src> = Vec<Statement<'src>>;
 
 /// A statement parse node.
 ///
@@ -16,14 +22,25 @@ pub type Program<'a> = Vec<Statement<'a>>;
 /// Otherwise, the program is considered a "simple expression", meaning the
 /// value of the statement expression is directly returned.
 #[derive(Debug, PartialEq)]
-pub enum Statement<'a> {
+pub enum Statement<'src> {
     /// See [`Expression`].
-    Expression(Expression<'a>),
+    Expression(Expression<'src>),
+}
+
+/// A statement block parse node.
+///
+/// It contains a list of statements.
+///
+/// Unlike a regular program statement list, every statement must be terminated
+/// with a semicolon.
+#[derive(Debug, PartialEq)]
+pub struct StatementBlock<'src> {
+    statements: Vec<Statement<'src>>,
 }
 
 /// An expression parse node.
 #[derive(Debug, PartialEq)]
-pub enum Expression<'a> {
+pub enum Expression<'src> {
     /// A floating-point number.
     Number(f64),
 
@@ -32,21 +49,21 @@ pub enum Expression<'a> {
     /// This expression requires two operands, one before the operator and one
     /// after it.
     ///
-    /// Syntax: `x [Operator] y`.
+    /// Syntax: `x + y`.
     Binary {
-        lhs: Box<Expression<'a>>,
+        lhs: Box<Expression<'src>>,
         op: Operator,
-        rhs: Box<Expression<'a>>,
+        rhs: Box<Expression<'src>>,
     },
 
     /// A unary expression node.
     ///
     /// This expression is an operation with only one operand.
     ///
-    /// Syntax: `[Operator]x`.
+    /// Syntax: `-v.bar`.
     Unary {
         op: Operator,
-        rhs: Box<Expression<'a>>,
+        rhs: Box<Expression<'src>>,
     },
 
     /// A ternary expression node.
@@ -54,30 +71,38 @@ pub enum Expression<'a> {
     /// This expression requires a condition and two operands, one for the
     /// truthy case and one for the falsy case.
     ///
-    /// Syntax: `x ? y : z`.
+    /// Syntax: `false ? 1 : 2`.
     Ternary {
-        condition: Box<Expression<'a>>,
-        if_true: Box<Expression<'a>>,
-        if_false: Box<Expression<'a>>,
+        condition: Box<Expression<'src>>,
+        if_true: Box<Expression<'src>>,
+        if_false: Box<Expression<'src>>,
+    },
+
+    /// A conditional expression node.
+    ///
+    /// Syntax: `q.foo ? { v.x = 2.0; }`.
+    Conditional {
+        condition: Box<Expression<'src>>,
+        block: StatementBlock<'src>,
     },
 
     /// A function call expression node.
     ///
-    /// Syntax: `foo.bar([Expression], [Expression])`.
+    /// Syntax: `q.bar(1, 2)`.
     Call {
-        id: &'a str,
-        arguments: Vec<Expression<'a>>,
+        id: &'src str,
+        arguments: Vec<Expression<'src>>,
     },
 }
 
-impl<'a> Expression<'a> {
+impl<'src> Expression<'src> {
     /// Creates a number expression.
     pub fn new_number(value: f64) -> Self {
         Self::Number(value)
     }
 
     /// Creates a binary expression.
-    pub fn new_binary(lhs: Expression<'a>, op: Operator, rhs: Expression<'a>) -> Self {
+    pub fn new_binary(lhs: Expression<'src>, op: Operator, rhs: Expression<'src>) -> Self {
         Self::Binary {
             lhs: Box::new(lhs),
             op,
@@ -86,7 +111,7 @@ impl<'a> Expression<'a> {
     }
 
     /// Creates a unary expression.
-    pub fn new_unary(op: Operator, rhs: Expression<'a>) -> Self {
+    pub fn new_unary(op: Operator, rhs: Expression<'src>) -> Self {
         Self::Unary {
             op,
             rhs: Box::new(rhs),
@@ -95,9 +120,9 @@ impl<'a> Expression<'a> {
 
     /// Creates a ternary expression.
     pub fn new_ternary(
-        condition: Expression<'a>,
-        if_true: Expression<'a>,
-        if_false: Expression<'a>,
+        condition: Expression<'src>,
+        if_true: Expression<'src>,
+        if_false: Expression<'src>,
     ) -> Self {
         Self::Ternary {
             condition: Box::new(condition),
@@ -106,8 +131,16 @@ impl<'a> Expression<'a> {
         }
     }
 
+    /// Creates a conditional expression.
+    pub fn new_conditional(condition: Expression<'src>, statements: Vec<Statement<'src>>) -> Self {
+        Self::Conditional {
+            condition: Box::new(condition),
+            block: StatementBlock { statements },
+        }
+    }
+
     /// Creates a function call expression.
-    pub fn new_call(id: &'a str, arguments: Vec<Expression<'a>>) -> Self {
+    pub fn new_call(id: &'src str, arguments: Vec<Expression<'src>>) -> Self {
         Self::Call { id, arguments }
     }
 }
@@ -152,8 +185,8 @@ pub enum Operator {
     Negate,
 }
 
-impl<'a> From<Token<'a>> for Operator {
-    fn from(token: Token<'a>) -> Self {
+impl<'src> From<Token<'src>> for Operator {
+    fn from(token: Token<'src>) -> Self {
         match token {
             Token::Plus => Self::Add,
             Token::Minus => Self::Subtract,
