@@ -49,7 +49,7 @@ pub enum Expression<'src> {
     /// This expression requires two operands, one before the operator and one
     /// after it.
     ///
-    /// Syntax: `x + y`.
+    /// Syntax: `v.x + v.y`.
     Binary {
         lhs: Box<Expression<'src>>,
         op: BinaryOperator,
@@ -60,7 +60,7 @@ pub enum Expression<'src> {
     ///
     /// This expression is an operation with only one operand.
     ///
-    /// Syntax: `-v.bar`.
+    /// Syntax: `-v.foo`.
     Unary {
         op: UnaryOperator,
         rhs: Box<Expression<'src>>,
@@ -150,29 +150,29 @@ impl<'src> Expression<'src> {
     }
 }
 
-/// A binary operator type.
+/// Represents a binary operation between two values.
 #[derive(Debug, PartialEq)]
 pub enum BinaryOperator {
     /// The addition operator produces the sum of two operands.
     ///
-    /// Syntax: `x + y`.
+    /// Syntax: `v.x + v.y`.
     Add,
 
     /// The subtraction operator subtracts the two operands, producing their
     /// difference.
     ///
-    /// Syntax: `x - y`.
+    /// Syntax: `v.x - v.y`.
     Subtract,
 
     /// The multiplication operator produces the product of the operands.
     ///
-    /// Syntax: `x * y`.
+    /// Syntax: `v.x * v.y`.
     Multiply,
 
     /// The division operator produces the quotient of its operands where the
     /// left operand is the dividend and the right operand is the divisor.
     ///
-    /// Syntax: `x / y`.
+    /// Syntax: `v.x / v.y`.
     Divide,
 }
 
@@ -188,7 +188,7 @@ impl<'src> From<Token<'src>> for BinaryOperator {
     }
 }
 
-/// A unary operator.
+/// Represents a unary operation on a single value.
 #[derive(Debug, PartialEq)]
 pub enum UnaryOperator {
     /// The negation operator precedes its operand and negates it.
