@@ -136,9 +136,9 @@ impl<'src> Token<'src> {
 impl<'src> fmt::Display for Token<'src> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self {
-            Token::Identifier(v) => write!(f, "{}", v),
-            Token::Literal(v) => write!(f, "{}", v),
-            Token::Number(v) => write!(f, "{}", v),
+            Token::Identifier(v) => write!(f, "{v}"),
+            Token::Literal(v) => write!(f, "{v}"),
+            Token::Number(v) => write!(f, "{v}"),
             Token::OpenParen => write!(f, "("),
             Token::CloseParen => write!(f, ")"),
             Token::OpenBrace => write!(f, "{{"),
