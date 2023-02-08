@@ -50,7 +50,6 @@ impl<'src> Parser<'src> {
 
     /// Parses a program which consists of one or more statements.
     pub fn parse_program(&mut self) -> Result<Program<'src>, ParseError> {
-        self.first_advance();
         self.advance();
 
         let mut statements = Vec::new();
@@ -229,17 +228,7 @@ impl<'src> Parser<'src> {
 
     /// Advances the current and next tokens.
     fn advance(&mut self) {
-        // self.current_token = std::mem::replace(
-        //     &mut self.next_token,
-        //     self.lexer.next().unwrap_or(Token::Eof),
-        // );
         self.token = self.lexer.next().unwrap_or(Token::Eof);
-    }
-
-    /// Similar to `self.advance` but used only once at the start to correctly
-    /// offset the token stream.
-    fn first_advance(&mut self) {
-        // self.next_token = self.lexer.next().unwrap_or(Token::Eof);
     }
 
     /// Advances the lexer consuming the next token and checking whether it
