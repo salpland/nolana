@@ -1,12 +1,13 @@
 use logos::Logos;
+use std::fmt;
 
 #[derive(Debug, PartialEq, Clone, Logos)]
-pub enum Token<'a> {
+pub enum Token<'src> {
     #[regex("[a-zA-Z]+[.][a-zA-Z_]+")]
-    Identifier(&'a str),
+    Identifier(&'src str),
 
     #[regex("'[^']*'")]
-    Literal(&'a str),
+    Literal(&'src str),
 
     #[regex("([0-9]*[.])?[0-9]+", |lex| lex.slice().parse())]
     Number(f64),
@@ -118,7 +119,7 @@ pub enum Token<'a> {
     Error,
 }
 
-impl<'a> Token<'a> {
+impl<'src> Token<'src> {
     /// Returns the binding power of this token (precedence).
     pub fn binding_power(&self, is_unary: bool) -> Option<(u8, u8)> {
         Some(match self {
@@ -129,6 +130,51 @@ impl<'a> Token<'a> {
             Self::Question => (3, 2),
             _ => return None,
         })
+    }
+}
+
+impl<'src> fmt::Display for Token<'src> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self {
+            Token::Identifier(v) => write!(f, "{}", v),
+            Token::Literal(v) => write!(f, "{}", v),
+            Token::Number(v) => write!(f, "{}", v),
+            Token::OpenParen => write!(f, "("),
+            Token::CloseParen => write!(f, ")"),
+            Token::OpenBrace => write!(f, "{{"),
+            Token::CloseBrace => write!(f, "}}"),
+            Token::OpenBracket => write!(f, "["),
+            Token::CloseBracket => write!(f, "]"),
+            Token::Bang => write!(f, "!"),
+            Token::BangEqual => write!(f, "!="),
+            Token::Equal => write!(f, "="),
+            Token::EqualEqual => write!(f, "=="),
+            Token::GreaterThan => write!(f, ">"),
+            Token::GreaterThanEqual => write!(f, ">="),
+            Token::LessThan => write!(f, "<"),
+            Token::LessThanEqual => write!(f, "<="),
+            Token::BarBar => write!(f, "||"),
+            Token::AndAnd => write!(f, "&&"),
+            Token::MinusGreaterThan => write!(f, "->"),
+            Token::Question => write!(f, "?"),
+            Token::QuestionQuestion => write!(f, "??"),
+            Token::Colon => write!(f, ":"),
+            Token::Semi => write!(f, ";"),
+            Token::Comma => write!(f, ","),
+            Token::Minus => write!(f, "-"),
+            Token::Plus => write!(f, "+"),
+            Token::Star => write!(f, "*"),
+            Token::Slash => write!(f, "/"),
+            Token::True => write!(f, "true"),
+            Token::False => write!(f, "false"),
+            Token::Break => write!(f, "break"),
+            Token::Continue => write!(f, "continue"),
+            Token::ForEach => write!(f, "for_each"),
+            Token::Loop => write!(f, "loop"),
+            Token::Return => write!(f, "return"),
+            Token::Eof => write!(f, "END-OF-INPUT"),
+            Token::Error => write!(f, "UNKNOWN"),
+        }
     }
 }
 

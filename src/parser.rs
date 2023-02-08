@@ -1,4 +1,6 @@
 use logos::{Lexer, Logos};
+use miette::Diagnostic;
+use std::ops::Range;
 use thiserror::Error;
 
 use crate::{
@@ -49,7 +51,7 @@ impl<'src> Parser<'src> {
     }
 
     /// Parses a program which consists of one or more statements.
-    pub fn parse_program(&mut self) -> Result<Program<'src>, ParseError> {
+    pub fn parse_program(&mut self) -> Result<Program<'src>, ParseError<'src>> {
         self.advance();
 
         let mut statements = Vec::new();
@@ -66,20 +68,20 @@ impl<'src> Parser<'src> {
     /// whether the program is a simple or complex Molang expression. An error
     /// will be returned if a statement is not terminated in a complex
     /// expression.
-    fn parse_statement(&mut self, is_first: bool) -> Result<Statement<'src>, ParseError> {
+    fn parse_statement(&mut self, is_first: bool) -> Result<Statement<'src>, ParseError<'src>> {
         let statement = match &self.token {
             Token::Number(_)
             | Token::OpenParen
             | Token::Minus
             | Token::Bang
             | Token::Identifier(_) => Statement::Expression(self.parse_expression(0)?),
-            Token::Eof => return Err(ParseError::UnexpectedEof),
-            _ => return Err(ParseError::UnexpectedToken),
+            Token::Eof => return Err(ParseError::UnexpectedEof(self.span())),
+            _ => return Err(ParseError::UnexpectedToken(self.token.clone(), self.span())),
         };
 
         self.advance();
         if self.token != Token::Semi && !is_first {
-            return Err(ParseError::UnterminatedStatement);
+            return Err(ParseError::UnterminatedStatement(self.span()));
         }
 
         Ok(statement)
@@ -88,17 +90,17 @@ impl<'src> Parser<'src> {
     /// Parses a single expression.
     ///
     /// This uses Pratt parsing as it is more efficient for expressions.
-    fn parse_expression(&mut self, min_bp: u8) -> Result<Expression<'src>, ParseError> {
+    fn parse_expression(&mut self, min_bp: u8) -> Result<Expression<'src>, ParseError<'src>> {
         let mut lhs = match &self.token {
             Token::Number(v) => Expression::Number(*v),
             Token::Minus | Token::Bang => self.parse_unary_expression()?,
             Token::OpenParen => self.parse_expression_in_paren()?,
             Token::Identifier(id) => self.parse_call_expression(id)?,
-            _ => return Err(ParseError::UnexpectedToken),
+            _ => return Err(ParseError::UnexpectedToken(self.token.clone(), self.span())),
         };
 
         loop {
-            let op = match &self.lexer.clone().next().unwrap_or(Token::Eof) {
+            let op = match self.lexer.clone().next().unwrap_or(Token::Eof) {
                 // Expression terminators.
                 Token::Eof
                 | Token::CloseParen
@@ -113,9 +115,9 @@ impl<'src> Parser<'src> {
                         Token::Plus | Token::Minus | Token::Star | Token::Slash | Token::Question
                     ) =>
                 {
-                    token.clone()
+                    token
                 }
-                _ => return Err(ParseError::UnexpectedToken),
+                token => return Err(ParseError::UnexpectedToken(token, self.span())),
             };
 
             if let Some((lbp, rbp)) = op.binding_power(false) {
@@ -151,14 +153,14 @@ impl<'src> Parser<'src> {
         rbp: u8,
         lhs: Expression<'src>,
         op: Token,
-    ) -> Result<Expression<'src>, ParseError> {
+    ) -> Result<Expression<'src>, ParseError<'src>> {
         let rhs = self.parse_expression(rbp)?;
 
         Ok(Expression::new_binary(lhs, op.into(), rhs))
     }
 
     /// Parses a unary expression.
-    fn parse_unary_expression(&mut self) -> Result<Expression<'src>, ParseError> {
+    fn parse_unary_expression(&mut self) -> Result<Expression<'src>, ParseError<'src>> {
         let op = self.token.clone();
         self.advance();
         let (_, rbp) = op.binding_power(true).unwrap();
@@ -172,7 +174,7 @@ impl<'src> Parser<'src> {
         &mut self,
         rbp: u8,
         lhs: Expression<'src>,
-    ) -> Result<Expression<'src>, ParseError> {
+    ) -> Result<Expression<'src>, ParseError<'src>> {
         let mhs = self.parse_expression(0)?;
         self.expect(Token::Colon)?;
         self.advance();
@@ -185,7 +187,7 @@ impl<'src> Parser<'src> {
     fn parse_conditional_expression(
         &mut self,
         lhs: Expression<'src>,
-    ) -> Result<Expression<'src>, ParseError> {
+    ) -> Result<Expression<'src>, ParseError<'src>> {
         let mut statements = Vec::new();
 
         self.advance();
@@ -198,7 +200,7 @@ impl<'src> Parser<'src> {
     }
 
     /// Parses an an expression inside parenthesis.
-    fn parse_expression_in_paren(&mut self) -> Result<Expression<'src>, ParseError> {
+    fn parse_expression_in_paren(&mut self) -> Result<Expression<'src>, ParseError<'src>> {
         self.advance();
         let lhs = self.parse_expression(0)?;
         self.expect(Token::CloseParen)?;
@@ -206,7 +208,10 @@ impl<'src> Parser<'src> {
     }
 
     /// Parses a function call expression.
-    fn parse_call_expression(&mut self, id: &'src str) -> Result<Expression<'src>, ParseError> {
+    fn parse_call_expression(
+        &mut self,
+        id: &'src str,
+    ) -> Result<Expression<'src>, ParseError<'src>> {
         let mut arguments = Vec::new();
 
         self.expect(Token::OpenParen)?;
@@ -219,7 +224,7 @@ impl<'src> Parser<'src> {
             match &self.token {
                 Token::Comma => continue,
                 Token::CloseParen => break,
-                _ => return Err(ParseError::UnexpectedToken),
+                _ => return Err(ParseError::UnexpectedToken(self.token.clone(), self.span())),
             }
         }
 
@@ -231,32 +236,55 @@ impl<'src> Parser<'src> {
         self.token = self.lexer.next().unwrap_or(Token::Eof);
     }
 
+    /// Returns the current token span.
+    fn span(&self) -> Range<usize> {
+        self.lexer.span()
+    }
+
     /// Advances the lexer consuming the next token and checking whether it
     /// matches the given one or not.
-    fn expect(&mut self, expected_token: Token) -> Result<(), ParseError> {
+    fn expect(&mut self, expected_token: Token<'src>) -> Result<(), ParseError<'src>> {
         self.advance();
 
         if self.token == expected_token {
             Ok(())
         } else {
-            Err(ParseError::UnterminatedParen)
+            Err(ParseError::Expected(
+                expected_token,
+                self.token.clone(),
+                self.span(),
+            ))
         }
     }
 }
 
-#[derive(Debug, PartialEq, Error)]
-pub enum ParseError {
+/// Represents an error that occured during parsing.
+#[derive(Debug, PartialEq, Error, Diagnostic)]
+pub enum ParseError<'src> {
+    /// A specific token was expected to be present but a different one was
+    /// found.
+    #[error("expected {0} but found {0}")]
+    #[diagnostic(code(nolana::parser::ParseError::Expected), url(docsrs))]
+    Expected(Token<'src>, Token<'src>, #[label("here")] Range<usize>),
+
+    /// The token stream ended abruptly during parsing. This could because no
+    /// more characters were found or unrecognized/invalid characters were
+    /// found.
     #[error("unexpected end of input")]
-    UnexpectedEof,
+    #[diagnostic(code(nolana::parser::ParseError::UnexpectedEof), url(docsrs))]
+    UnexpectedEof(#[label("no more input here?")] Range<usize>),
 
-    #[error("found an unexpected token")]
-    UnexpectedToken,
+    /// An unexpected token was found. This usually means that some important
+    /// delimiter or character was misplaced or not present.
+    #[error("unexpected {0}")]
+    #[diagnostic(code(nolana::parser::ParseError::UnexpectedToken), url(docsrs))]
+    UnexpectedToken(Token<'src>, #[label("here")] Range<usize>),
 
+    /// A statement was unterminated, meaning that a `;` was missing.
     #[error("statement is unterminated")]
-    UnterminatedStatement,
-
-    #[error("unterminated parenthesis")]
-    UnterminatedParen,
+    #[diagnostic(help("try to append a semicolon"))]
+    #[diagnostic(code(nolana::parser::ParseError::UnterminatedStatement), url(docsrs))]
+    UnterminatedStatement(#[label("this statement")] Range<usize>),
 }
 
 #[cfg(test)]
