@@ -11,6 +11,29 @@ use crate::{
 /// This parser implementation tries to be conformant to the most recent
 /// Molang implementation. [Legacy behavior](https://bedrock.dev/docs/stable/Molang#Versioned%20Changes)
 /// such as incorrect ternary operator associativity are not supported.
+///
+/// # Example
+///
+/// ```
+/// use nolana::{
+///     ast::{Expression, Statement},
+///     parser::Parser,
+/// };
+///
+/// let mut parser = Parser::new("math.pow(2, 3)");
+/// let ast = parser.parse_program().expect("should parse");
+///
+/// assert_eq!(
+///     ast,
+///     vec![Statement::Expression(Expression::new_call(
+///         "math.pow",
+///         vec![
+///             Expression::new_number(2.0),
+///             Expression::new_number(3.0)
+///         ]
+///     ))]
+/// );
+/// ```
 pub struct Parser<'src> {
     lexer: Lexer<'src, Token<'src>>,
     token: Token<'src>,
