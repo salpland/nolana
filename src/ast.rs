@@ -52,7 +52,7 @@ pub enum Expression<'src> {
     /// Syntax: `x + y`.
     Binary {
         lhs: Box<Expression<'src>>,
-        op: Operator,
+        op: BinaryOperator,
         rhs: Box<Expression<'src>>,
     },
 
@@ -62,7 +62,7 @@ pub enum Expression<'src> {
     ///
     /// Syntax: `-v.bar`.
     Unary {
-        op: Operator,
+        op: UnaryOperator,
         rhs: Box<Expression<'src>>,
     },
 
@@ -107,7 +107,7 @@ impl<'src> Expression<'src> {
     }
 
     /// Creates a binary expression.
-    pub fn new_binary(lhs: Expression<'src>, op: Operator, rhs: Expression<'src>) -> Self {
+    pub fn new_binary(lhs: Expression<'src>, op: BinaryOperator, rhs: Expression<'src>) -> Self {
         Self::Binary {
             lhs: Box::new(lhs),
             op,
@@ -116,7 +116,7 @@ impl<'src> Expression<'src> {
     }
 
     /// Creates a unary expression.
-    pub fn new_unary(op: Operator, rhs: Expression<'src>) -> Self {
+    pub fn new_unary(op: UnaryOperator, rhs: Expression<'src>) -> Self {
         Self::Unary {
             op,
             rhs: Box::new(rhs),
@@ -150,26 +150,18 @@ impl<'src> Expression<'src> {
     }
 }
 
-/// Any operator type.
+/// A binary operator type.
 #[derive(Debug, PartialEq)]
-pub enum Operator {
+pub enum BinaryOperator {
     /// The addition operator produces the sum of two operands.
     ///
     /// Syntax: `x + y`.
     Add,
 
-    /// # Binary
-    ///
     /// The subtraction operator subtracts the two operands, producing their
     /// difference.
     ///
     /// Syntax: `x - y`.
-    ///
-    /// # Unary
-    ///
-    /// The unary negation operator precedes its operand and negates it.
-    ///
-    /// Syntax: `-x`.
     Subtract,
 
     /// The multiplication operator produces the product of the operands.
@@ -182,22 +174,40 @@ pub enum Operator {
     ///
     /// Syntax: `x / y`.
     Divide,
-
-    /// Returns `false` if its single operand can be converted to `true`;
-    /// otherwise, returns `true`.
-    ///
-    /// Syntax: `!x`.
-    Negate,
 }
 
-impl<'src> From<Token<'src>> for Operator {
+impl<'src> From<Token<'src>> for BinaryOperator {
     fn from(token: Token<'src>) -> Self {
         match token {
             Token::Plus => Self::Add,
             Token::Minus => Self::Subtract,
             Token::Star => Self::Multiply,
             Token::Slash => Self::Divide,
-            Token::Bang => Self::Negate,
+            _ => unreachable!(),
+        }
+    }
+}
+
+/// A unary operator.
+#[derive(Debug, PartialEq)]
+pub enum UnaryOperator {
+    /// The negation operator precedes its operand and negates it.
+    ///
+    /// Syntax: `-x`.
+    Negate,
+
+    /// The NOT operation returns `false` if its single operand can be
+    /// converted to `true`; otherwise, returns `true`.
+    ///
+    /// Syntax: `!x`.
+    Not,
+}
+
+impl<'src> From<Token<'src>> for UnaryOperator {
+    fn from(token: Token<'src>) -> Self {
+        match token {
+            Token::Minus => Self::Negate,
+            Token::Bang => Self::Not,
             _ => unreachable!(),
         }
     }

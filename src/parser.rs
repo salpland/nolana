@@ -3,10 +3,7 @@ use miette::Diagnostic;
 use std::ops::Range;
 use thiserror::Error;
 
-use crate::{
-    ast::{Expression, Program, Statement},
-    token::Token,
-};
+use crate::{ast::*, token::Token};
 
 /// A Molang parser.
 ///
@@ -289,8 +286,6 @@ pub enum ParseError<'src> {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::Operator;
-
     use super::*;
 
     macro_rules! text_parser {
@@ -309,7 +304,7 @@ mod tests {
         "1 + 2",
         Ok(vec![Statement::Expression(Expression::new_binary(
             Expression::Number(1.0),
-            Operator::Add,
+            BinaryOperator::Add,
             Expression::Number(2.0)
         ))])
     );
@@ -319,7 +314,7 @@ mod tests {
         "1 - 2",
         Ok(vec![Statement::Expression(Expression::new_binary(
             Expression::Number(1.0),
-            Operator::Subtract,
+            BinaryOperator::Subtract,
             Expression::Number(2.0)
         ))])
     );
@@ -329,7 +324,7 @@ mod tests {
         "1 * 2",
         Ok(vec![Statement::Expression(Expression::new_binary(
             Expression::Number(1.0),
-            Operator::Multiply,
+            BinaryOperator::Multiply,
             Expression::Number(2.0)
         ))])
     );
@@ -339,7 +334,7 @@ mod tests {
         "1 / 2",
         Ok(vec![Statement::Expression(Expression::new_binary(
             Expression::Number(1.0),
-            Operator::Divide,
+            BinaryOperator::Divide,
             Expression::Number(2.0)
         ))])
     );
@@ -349,10 +344,10 @@ mod tests {
         "1 + 2 * 3",
         Ok(vec![Statement::Expression(Expression::new_binary(
             Expression::Number(1.0),
-            Operator::Add,
+            BinaryOperator::Add,
             Expression::new_binary(
                 Expression::Number(2.0),
-                Operator::Multiply,
+                BinaryOperator::Multiply,
                 Expression::Number(3.0)
             )
         ))])
@@ -364,10 +359,10 @@ mod tests {
         Ok(vec![Statement::Expression(Expression::new_binary(
             Expression::new_binary(
                 Expression::Number(1.0),
-                Operator::Add,
+                BinaryOperator::Add,
                 Expression::Number(2.0)
             ),
-            Operator::Multiply,
+            BinaryOperator::Multiply,
             Expression::Number(3.0)
         ))])
     );
@@ -376,8 +371,8 @@ mod tests {
         unary,
         "!-1",
         Ok(vec![Statement::Expression(Expression::new_unary(
-            Operator::Negate,
-            Expression::new_unary(Operator::Subtract, Expression::Number(1.0))
+            UnaryOperator::Not,
+            Expression::new_unary(UnaryOperator::Negate, Expression::Number(1.0))
         ))])
     );
 
