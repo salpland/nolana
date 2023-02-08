@@ -17,8 +17,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-      # TODO: Uncomment this once the library is stable and has no unused code.
-      # - name: 🔍 Lint
-      #   run: RUSTFLAGS="-Dwarnings" cargo clippy
+      - name: 🔍 Lint
+        run: RUSTFLAGS="-Dwarnings" cargo clippy
       - name: 🧪 Test
         run: cargo test --verbose
