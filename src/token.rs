@@ -122,8 +122,8 @@ impl<'a> Token<'a> {
     /// Returns the binding power of this token (precedence).
     pub fn binding_power(&self, is_unary: bool) -> Option<(u8, u8)> {
         Some(match self {
-            Self::Minus if is_unary => (0, 9),
-            Self::Bang if is_unary => (0, 8),
+            Self::Bang if is_unary => (0, 9),
+            Self::Minus if is_unary => (0, 8),
             Self::Star | Self::Slash => (6, 7),
             Self::Plus | Self::Minus => (4, 5),
             Self::Question => (3, 2),
