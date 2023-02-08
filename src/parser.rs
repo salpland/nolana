@@ -1,3 +1,5 @@
+//! Molang parser implementation.
+
 use logos::{Lexer, Logos};
 use miette::Diagnostic;
 use std::ops::Range;
