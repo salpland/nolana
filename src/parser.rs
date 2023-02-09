@@ -297,7 +297,7 @@ pub enum ParseError<'src> {
 mod tests {
     use super::*;
 
-    macro_rules! text_parser {
+    macro_rules! test_parser {
         ($name:ident, $source:literal, $expected_output:expr) => {
             #[test]
             fn $name() {
@@ -308,7 +308,7 @@ mod tests {
         };
     }
 
-    text_parser!(
+    test_parser!(
         binary_addition,
         "1 + 2",
         Ok(vec![Statement::Expression(Expression::new_binary(
@@ -318,7 +318,7 @@ mod tests {
         ))])
     );
 
-    text_parser!(
+    test_parser!(
         binary_subtraction,
         "1 - 2",
         Ok(vec![Statement::Expression(Expression::new_binary(
@@ -328,7 +328,7 @@ mod tests {
         ))])
     );
 
-    text_parser!(
+    test_parser!(
         binary_multiplication,
         "1 * 2",
         Ok(vec![Statement::Expression(Expression::new_binary(
@@ -338,7 +338,7 @@ mod tests {
         ))])
     );
 
-    text_parser!(
+    test_parser!(
         binary_division,
         "1 / 2",
         Ok(vec![Statement::Expression(Expression::new_binary(
@@ -348,7 +348,7 @@ mod tests {
         ))])
     );
 
-    text_parser!(
+    test_parser!(
         binary_equality,
         "1 == 2",
         Ok(vec![Statement::Expression(Expression::new_binary(
@@ -358,7 +358,7 @@ mod tests {
         ))])
     );
 
-    text_parser!(
+    test_parser!(
         binary_inequality,
         "1 != 2",
         Ok(vec![Statement::Expression(Expression::new_binary(
@@ -368,7 +368,7 @@ mod tests {
         ))])
     );
 
-    text_parser!(
+    test_parser!(
         binary_greater_than,
         "1 > 2",
         Ok(vec![Statement::Expression(Expression::new_binary(
@@ -378,7 +378,7 @@ mod tests {
         ))])
     );
 
-    text_parser!(
+    test_parser!(
         binary_greater_than_or_equal,
         "1 >= 2",
         Ok(vec![Statement::Expression(Expression::new_binary(
@@ -388,7 +388,7 @@ mod tests {
         ))])
     );
 
-    text_parser!(
+    test_parser!(
         binary_less_than,
         "1 < 2",
         Ok(vec![Statement::Expression(Expression::new_binary(
@@ -398,7 +398,7 @@ mod tests {
         ))])
     );
 
-    text_parser!(
+    test_parser!(
         binary_less_than_or_equal,
         "1 <= 2",
         Ok(vec![Statement::Expression(Expression::new_binary(
@@ -408,7 +408,7 @@ mod tests {
         ))])
     );
 
-    text_parser!(
+    test_parser!(
         binary_and,
         "1 && 1",
         Ok(vec![Statement::Expression(Expression::new_binary(
@@ -418,7 +418,7 @@ mod tests {
         ))])
     );
 
-    text_parser!(
+    test_parser!(
         binary_or,
         "1 || 1",
         Ok(vec![Statement::Expression(Expression::new_binary(
@@ -428,7 +428,7 @@ mod tests {
         ))])
     );
 
-    text_parser!(
+    test_parser!(
         binary_nullish_coalescing,
         "0 ?? 1",
         Ok(vec![Statement::Expression(Expression::new_binary(
@@ -438,7 +438,7 @@ mod tests {
         ))])
     );
 
-    text_parser!(
+    test_parser!(
         order_of_operations,
         "1 + 2 * 3",
         Ok(vec![Statement::Expression(Expression::new_binary(
@@ -452,7 +452,7 @@ mod tests {
         ))])
     );
 
-    text_parser!(
+    test_parser!(
         forced_order_of_operations,
         "(1 + 2) * 3",
         Ok(vec![Statement::Expression(Expression::new_binary(
@@ -466,7 +466,7 @@ mod tests {
         ))])
     );
 
-    text_parser!(
+    test_parser!(
         unary,
         "!-1",
         Ok(vec![Statement::Expression(Expression::new_unary(
@@ -475,7 +475,7 @@ mod tests {
         ))])
     );
 
-    text_parser!(
+    test_parser!(
         ternary,
         "0 ? 1 : 2",
         Ok(vec![Statement::Expression(Expression::new_ternary(
@@ -485,7 +485,7 @@ mod tests {
         ))])
     );
 
-    text_parser!(
+    test_parser!(
         conditional,
         "0 ? {
             q.foo(1);
@@ -500,7 +500,7 @@ mod tests {
         ))])
     );
 
-    text_parser!(
+    test_parser!(
         function_call,
         "q.bar(1, 2)",
         Ok(vec![Statement::Expression(Expression::new_call(
