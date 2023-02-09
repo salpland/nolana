@@ -99,7 +99,8 @@ impl<'src> Parser<'src> {
         };
 
         loop {
-            let op = match self.lexer.clone().next().unwrap_or(Token::Eof) {
+            let op = self.lexer.clone().next().unwrap_or(Token::Eof);
+            let op = match op {
                 // Expression terminators.
                 Token::Eof
                 | Token::CloseParen
@@ -108,14 +109,20 @@ impl<'src> Parser<'src> {
                 | Token::Comma
                 | Token::Semi => break,
                 // Expression operators.
-                token
-                    if matches!(
-                        token,
-                        Token::Plus | Token::Minus | Token::Star | Token::Slash | Token::Question
-                    ) =>
-                {
-                    token
-                }
+                Token::Plus
+                | Token::Minus
+                | Token::Star
+                | Token::Slash
+                | Token::Question
+                | Token::QuestionQuestion
+                | Token::AndAnd
+                | Token::BarBar
+                | Token::EqualEqual
+                | Token::BangEqual
+                | Token::GreaterThan
+                | Token::GreaterThanEqual
+                | Token::LessThan
+                | Token::LessThanEqual => op,
                 token => return Err(ParseError::UnexpectedToken(token, self.span())),
             };
 
@@ -338,6 +345,96 @@ mod tests {
             Expression::Number(1.0),
             BinaryOperator::Divide,
             Expression::Number(2.0)
+        ))])
+    );
+
+    text_parser!(
+        binary_equality,
+        "1 == 2",
+        Ok(vec![Statement::Expression(Expression::new_binary(
+            Expression::Number(1.0),
+            BinaryOperator::Equal,
+            Expression::Number(2.0)
+        ))])
+    );
+
+    text_parser!(
+        binary_inequality,
+        "1 != 2",
+        Ok(vec![Statement::Expression(Expression::new_binary(
+            Expression::Number(1.0),
+            BinaryOperator::NotEqual,
+            Expression::Number(2.0)
+        ))])
+    );
+
+    text_parser!(
+        binary_greater_than,
+        "1 > 2",
+        Ok(vec![Statement::Expression(Expression::new_binary(
+            Expression::Number(1.0),
+            BinaryOperator::GreaterThan,
+            Expression::Number(2.0)
+        ))])
+    );
+
+    text_parser!(
+        binary_greater_than_or_equal,
+        "1 >= 2",
+        Ok(vec![Statement::Expression(Expression::new_binary(
+            Expression::Number(1.0),
+            BinaryOperator::GreaterThanOrEqual,
+            Expression::Number(2.0)
+        ))])
+    );
+
+    text_parser!(
+        binary_less_than,
+        "1 < 2",
+        Ok(vec![Statement::Expression(Expression::new_binary(
+            Expression::Number(1.0),
+            BinaryOperator::LessThan,
+            Expression::Number(2.0)
+        ))])
+    );
+
+    text_parser!(
+        binary_less_than_or_equal,
+        "1 <= 2",
+        Ok(vec![Statement::Expression(Expression::new_binary(
+            Expression::Number(1.0),
+            BinaryOperator::LessThanOrEqual,
+            Expression::Number(2.0)
+        ))])
+    );
+
+    text_parser!(
+        binary_and,
+        "1 && 1",
+        Ok(vec![Statement::Expression(Expression::new_binary(
+            Expression::Number(1.0),
+            BinaryOperator::And,
+            Expression::Number(1.0)
+        ))])
+    );
+
+    text_parser!(
+        binary_or,
+        "1 || 1",
+        Ok(vec![Statement::Expression(Expression::new_binary(
+            Expression::Number(1.0),
+            BinaryOperator::Or,
+            Expression::Number(1.0)
+        ))])
+    );
+
+    text_parser!(
+        binary_nullish_coalescing,
+        "0 ?? 1",
+        Ok(vec![Statement::Expression(Expression::new_binary(
+            Expression::Number(0.0),
+            BinaryOperator::Coalesce,
+            Expression::Number(1.0)
         ))])
     );
 

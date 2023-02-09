@@ -174,6 +174,63 @@ pub enum BinaryOperator {
     ///
     /// Syntax: `v.x / v.y`.
     Divide,
+
+    /// The equality operator applies comparison between two values returning
+    /// `1.0` or `0.0` based on that.
+    ///
+    /// Syntax: `v.x == v.y`.
+    Equal,
+
+    /// The inequality operator returns `1.0` if the operands are not equal.
+    /// Otherwise, it returns `0.0`.
+    ///
+    /// Syntax: `v.x != v.y`.
+    NotEqual,
+
+    /// The greater than operator returns `1.0` if the left operand is greater
+    /// than the right operand. Otherwise, it returns `0.0`.
+    ///
+    /// Syntax: `v.x > v.y`.
+    GreaterThan,
+
+    /// The greater than or equal operator returns `1.0` if the left operand is
+    /// greater than or equal to the right operand. Otherwise, it returns
+    /// `0.0`.
+    ///
+    /// Syntax: `v.x >= v.y`.
+    GreaterThanOrEqual,
+
+    /// The less than operator returns `1.0` if the left operand is less than
+    /// the right operand. Otherwise, it returns `0.0`.
+    ///
+    /// Syntax: `v.x < v.y`.
+    LessThan,
+
+    /// The less than or equal operator returns `1.0` if the left operand is
+    /// less than or equal to the right operand. Otherwise, it returns
+    /// `0.0`.
+    ///
+    /// Syntax: `v.x <= v.y`.
+    LessThanOrEqual,
+
+    /// The logical AND operator returns the value of the first operand if it
+    /// can be coerced into `1.0`; otherwise, it returns the second operand.
+    ///
+    /// Syntax: `v.x && v.y`.
+    And,
+
+    /// The logical OR operator returns the value the first operand if it can be
+    /// coerced into `1.0`; otherwise, it returns the second operand.
+    ///
+    /// Syntax: `v.x || v.y`.
+    Or,
+
+    /// The nullish coalescing operator is a logical operator that returns the
+    /// second operand when its first operand is a value that does not
+    /// exist, and otherwise returns its first operand.
+    ///
+    /// Syntax: `v.x ?? v.y`.
+    Coalesce,
 }
 
 impl<'src> From<Token<'src>> for BinaryOperator {
@@ -183,6 +240,15 @@ impl<'src> From<Token<'src>> for BinaryOperator {
             Token::Minus => Self::Subtract,
             Token::Star => Self::Multiply,
             Token::Slash => Self::Divide,
+            Token::EqualEqual => Self::Equal,
+            Token::BangEqual => Self::NotEqual,
+            Token::GreaterThan => Self::GreaterThan,
+            Token::GreaterThanEqual => Self::GreaterThanOrEqual,
+            Token::LessThan => Self::LessThan,
+            Token::LessThanEqual => Self::LessThanOrEqual,
+            Token::AndAnd => Self::And,
+            Token::BarBar => Self::Or,
+            Token::QuestionQuestion => Self::Coalesce,
             _ => unreachable!(),
         }
     }
@@ -196,8 +262,8 @@ pub enum UnaryOperator {
     /// Syntax: `-x`.
     Negate,
 
-    /// The NOT operation returns `false` if its single operand can be
-    /// converted to `true`; otherwise, returns `true`.
+    /// The NOT operation returns `0.0` if its single operand can be
+    /// converted to `1.0`; otherwise, returns `1.0`.
     ///
     /// Syntax: `!x`.
     Not,

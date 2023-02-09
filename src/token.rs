@@ -123,11 +123,19 @@ impl<'src> Token<'src> {
     /// Returns the binding power of this token (precedence).
     pub fn binding_power(&self, is_unary: bool) -> Option<(u8, u8)> {
         Some(match self {
-            Self::Bang if is_unary => (0, 9),
-            Self::Minus if is_unary => (0, 8),
-            Self::Star | Self::Slash => (6, 7),
-            Self::Plus | Self::Minus => (4, 5),
-            Self::Question => (3, 2),
+            // Based on: https://bedrock.dev/docs/stable/Molang#Operator%20Precedence.
+            Self::Bang if is_unary => (0, 17),
+            Self::Minus if is_unary => (0, 16),
+            Self::Star | Self::Slash => (14, 15),
+            Self::Plus | Self::Minus => (12, 13),
+            Self::GreaterThan | Self::GreaterThanEqual | Self::LessThan | Self::LessThanEqual => {
+                (10, 11)
+            }
+            Self::EqualEqual | Self::BangEqual => (9, 10),
+            Self::AndAnd => (7, 8),
+            Self::BarBar => (5, 6),
+            Self::Question => (3, 4),
+            Self::QuestionQuestion => (1, 2),
             _ => return None,
         })
     }
